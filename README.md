@@ -27,7 +27,7 @@ WordVault is a modern, interactive web-based English learning tool designed to h
 
 ## 🚀 Live Demo
 
-👉 ( https://alokchittoria7.github.io/wordvault/#main )
+👉 ( https://alokchittoria7.github.io/wordvault/ )
 
 ---
 
