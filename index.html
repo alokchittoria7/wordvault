@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="WordVault is an interactive English learning tool with search, filter & progress tracking.">
+<title>WordVault – Interactive English Learning Tool</title>
+<link href="https://fonts.googleapis.com/css2?family=Clash+Display:wght@400;500;600;700&family=Cabinet+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ─── Reset & Base ─── */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --bg:      #050810;
+  --surface: #0c0f1e;
+  --glass:   rgba(255,255,255,0.04);
+  --border:  rgba(255,255,255,0.08);
+  --blue:    #3b82f6;
+  --cyan:    #06b6d4;
+  --gold:    #f59e0b;
+  --pink:    #ec4899;
+  --green:   #10b981;
+  --violet:  #8b5cf6;
+  --orange:  #f97316;
+  --text:    #e2e8f0;
+  --muted:   #64748b;
+  --learned: #10b981;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Cabinet Grotesk', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  cursor: none;
+}
+
+/* ─── Custom Cursor ─── */
+#cursor {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--cyan);
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%,-50%);
+  transition: width .15s, height .15s, background .15s;
+  mix-blend-mode: screen;
+}
+#cursor-ring {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(6,182,212,0.4);
+  position: fixed;
+  pointer-events: none;
+  z-index: 9998;
+  transform: translate(-50%,-50%);
+  transition: transform .08s ease-out, width .2s, height .2s;
+}
+body:hover #cursor { width:14px; height:14px; }
+
+/* ─── Animated BG ─── */
+#bg-canvas {
+  position: fixed; inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: .55;
+}
+
+/* ─── Hero ─── */
+.hero {
+  position: relative; z-index: 1;
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+  padding: 0 24px;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 40%, rgba(59,130,246,.18) 0%, transparent 70%),
+              radial-gradient(ellipse 50% 40% at 80% 70%, rgba(236,72,153,.12) 0%, transparent 60%);
+}
+
+.badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 16px; border-radius: 100px;
+  border: 1px solid rgba(59,130,246,.35);
+  background: rgba(59,130,246,.08);
+  font-size: .75rem; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--cyan); margin-bottom: 28px;
+  animation: fadeUp .8s ease both;
+}
+.badge-dot { width:6px; height:6px; border-radius:50%; background:var(--cyan); animation: pulse 1.5s infinite; }
+
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+
+.hero h1 {
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: clamp(3rem, 10vw, 7rem);
+  line-height: 1;
+  letter-spacing: -.04em;
+  margin-bottom: 8px;
+  animation: fadeUp .8s .1s ease both;
+}
+
+.hero h1 .grad {
+  background: linear-gradient(135deg, #60a5fa 0%, #06b6d4 40%, #f59e0b 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero h1 .outline {
+  -webkit-text-stroke: 2px rgba(255,255,255,.15);
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-sub {
+  font-size: clamp(.95rem, 2.5vw, 1.15rem);
+  color: var(--muted); max-width: 520px;
+  line-height: 1.7; margin-bottom: 48px;
+  animation: fadeUp .8s .2s ease both;
+}
+
+.stats-row {
+  display: flex; gap: 40px; flex-wrap: wrap; justify-content: center;
+  margin-bottom: 56px;
+  animation: fadeUp .8s .3s ease both;
+}
+
+.stat { text-align: center; }
+.stat-num {
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-size: 2.2rem; font-weight: 700;
+  background: linear-gradient(135deg, var(--blue), var(--cyan));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.stat-label { font-size: .75rem; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; margin-top: 2px; }
+
+.cta-btn {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 14px 32px; border-radius: 100px;
+  background: linear-gradient(135deg, var(--blue), var(--cyan));
+  color: #fff; font-weight: 700; font-size: 1rem;
+  text-decoration: none; border: none; cursor: none;
+  box-shadow: 0 0 40px rgba(59,130,246,.4);
+  transition: transform .2s, box-shadow .2s;
+  animation: fadeUp .8s .4s ease both;
+}
+.cta-btn:hover { transform: translateY(-2px); box-shadow: 0 0 60px rgba(59,130,246,.6); }
+.cta-btn svg { transition: transform .2s; }
+.cta-btn:hover svg { transform: translateY(4px); }
+
+/* ─── Progress Bar ─── */
+.progress-wrap {
+  position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 100;
+  background: rgba(255,255,255,.05);
+}
+.progress-bar {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--blue), var(--cyan), var(--gold));
+  transition: width .3s;
+}
+
+/* ─── Floating Nav ─── */
+nav {
+  position: sticky; top: 16px; z-index: 50;
+  display: flex; justify-content: center;
+  margin: 0 0 48px;
+  animation: fadeUp .6s ease both;
+}
+.nav-inner {
+  display: flex; gap: 4px; flex-wrap: wrap; justify-content: center;
+  background: rgba(12,15,30,.85);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 6px;
+}
+.nav-btn {
+  padding: 8px 18px; border-radius: 100px;
+  border: none; background: transparent;
+  color: var(--muted); font-size: .82rem; font-weight: 600;
+  cursor: none; transition: all .2s;
+  font-family: 'Cabinet Grotesk', sans-serif;
+  white-space: nowrap;
+}
+.nav-btn:hover { color: var(--text); background: var(--glass); }
+.nav-btn.active {
+  background: linear-gradient(135deg, var(--blue), var(--cyan));
+  color: #fff;
+  box-shadow: 0 0 20px rgba(59,130,246,.3);
+}
+
+/* ─── Search ─── */
+.search-wrap {
+  position: relative; z-index: 1;
+  max-width: 480px; margin: 0 auto 56px;
+  padding: 0 24px;
+  animation: fadeUp .6s .1s ease both;
+}
+.search-wrap svg {
+  position: absolute; left: 40px; top: 50%; transform: translateY(-50%);
+  color: var(--muted); pointer-events: none;
+}
+#search {
+  width: 100%; padding: 14px 20px 14px 48px;
+  background: var(--glass); border: 1px solid var(--border);
+  border-radius: 100px; color: var(--text);
+  font-size: .95rem; outline: none;
+  font-family: 'Cabinet Grotesk', sans-serif;
+  transition: border-color .2s, box-shadow .2s;
+  cursor: none;
+}
+#search:focus {
+  border-color: rgba(59,130,246,.5);
+  box-shadow: 0 0 0 4px rgba(59,130,246,.1);
+}
+#search::placeholder { color: var(--muted); }
+
+/* ─── Learned Counter ─── */
+.learned-bar {
+  position: relative; z-index: 1;
+  max-width: 480px; margin: -32px auto 56px;
+  padding: 0 24px;
+  display: flex; align-items: center; gap: 12px;
+}
+.learned-track {
+  flex: 1; height: 4px; border-radius: 2px;
+  background: rgba(255,255,255,.07);
+  overflow: hidden;
+}
+.learned-fill {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--green), #34d399);
+  border-radius: 2px; transition: width .5s ease;
+}
+.learned-label { font-size: .78rem; color: var(--muted); white-space: nowrap; }
+#learned-count { color: var(--green); font-weight: 700; }
+
+/* ─── Main Content ─── */
+main {
+  position: relative; z-index: 1;
+  max-width: 1200px; margin: 0 auto;
+  padding: 0 20px 100px;
+}
+
+/* ─── Cards Grid ─── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.card {
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: 20px; padding: 24px;
+  transition: transform .25s, border-color .25s, box-shadow .25s;
+  animation: fadeUp .6s ease both;
+  position: relative; overflow: hidden;
+}
+.card::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at 0 0, var(--glow-color, transparent) 0%, transparent 60%);
+  opacity: 0; transition: opacity .3s;
+  pointer-events: none;
+}
+.card:hover { transform: translateY(-4px); border-color: rgba(255,255,255,.14); box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+.card:hover::before { opacity: 1; }
+
+.card-top {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  margin-bottom: 6px;
+}
+.cat-pill {
+  font-size: .68rem; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; padding: 3px 10px; border-radius: 100px;
+  background: rgba(255,255,255,.06); color: var(--cat-color);
+  border: 1px solid rgba(255,255,255,.08);
+}
+.cat-count { font-size: .72rem; color: var(--muted); }
+
+.card h2 {
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-size: 1.1rem; font-weight: 700;
+  color: var(--cat-color); margin-bottom: 4px;
+}
+.card-hint { font-size: .78rem; color: var(--muted); margin-bottom: 16px; line-height: 1.5; }
+
+/* ─── Words ─── */
+.words { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.word {
+  position: relative;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 8px; padding: 6px 12px;
+  font-size: .84rem; font-weight: 500;
+  cursor: none; transition: all .15s;
+  user-select: none;
+}
+.word:hover {
+  background: rgba(255,255,255,.1);
+  border-color: var(--cat-color);
+  transform: scale(1.05);
+}
+.word.learned {
+  background: rgba(16,185,129,.15);
+  border-color: rgba(16,185,129,.4);
+  color: #34d399;
+}
+.word.learned::after {
+  content: '✓';
+  margin-left: 5px; font-size: .7rem;
+}
+
+/* Tooltip */
+.word[data-m]:hover .tip {
+  opacity: 1; transform: translateY(0); pointer-events: none;
+}
+.tip {
+  position: absolute; bottom: calc(100% + 8px); left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: #1e2235;
+  border: 1px solid var(--border);
+  border-radius: 8px; padding: 5px 10px;
+  font-size: .75rem; color: var(--text);
+  white-space: nowrap; opacity: 0;
+  transition: opacity .15s, transform .15s;
+  pointer-events: none; z-index: 10;
+}
+.tip::after {
+  content: ''; position: absolute; top: 100%; left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #1e2235;
+}
+
+/* Span 2 cols on large screens */
+.wide { grid-column: span 2; }
+@media (max-width: 720px) { .wide { grid-column: span 1; } }
+
+/* ─── Animations ─── */
+@keyframes fadeUp {
+  from { opacity:0; transform: translateY(24px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+
+/* ─── No Results ─── */
+#no-results {
+  display: none; text-align: center;
+  padding: 80px 20px; color: var(--muted);
+  grid-column: 1 / -1;
+}
+#no-results svg { margin-bottom: 12px; opacity:.3; }
+
+/* ─── Footer ─── */
+footer {
+  position: relative; z-index: 1;
+  text-align: center; padding: 40px 20px;
+  color: var(--muted); font-size: .82rem;
+  border-top: 1px solid var(--border);
+}
+footer span { color: var(--cyan); }
+
+/* ─── Mobile ─── */
+@media (max-width: 600px) {
+  .stats-row { gap: 24px; }
+  .stat-num { font-size: 1.8rem; }
+  .nav-btn { padding: 6px 12px; font-size: .75rem; }
+  #cursor, #cursor-ring { display: none; }
+  body { cursor: auto; }
+  .word { cursor: pointer; }
+  #search { cursor: text; }
+  .nav-btn, .cta-btn { cursor: pointer; }
+}
+</style>
+</head>
+<body>
+
+<!-- Cursor -->
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+
+<!-- Scroll Progress -->
+<div class="progress-wrap"><div class="progress-bar" id="pgbar"></div></div>
+
+<!-- Animated BG -->
+<canvas id="bg-canvas"></canvas>
+
+<!-- ═══ HERO ═══ -->
+<section class="hero" id="top">
+  <div class="badge">
+    <span class="badge-dot"></span>
+    Interactive Word Bank
+  </div>
+  <h1>
+    <span class="grad">Word</span><span class="outline">Vault</span>
+  </h1>
+  <p class="hero-sub">
+    200+ essential English words — category-wise organized with Hindi meanings. Click any word to mark it <strong style="color:var(--green)">learned</strong> and track your progress.
+  </p>
+  <div class="stats-row">
+    <div class="stat"><div class="stat-num">237</div><div class="stat-label">Total Words</div></div>
+    <div class="stat"><div class="stat-num">11</div><div class="stat-label">Categories</div></div>
+    <div class="stat"><div class="stat-num" id="hero-learned">0</div><div class="stat-label">Learned</div></div>
+  </div>
+  <a href="#main" class="cta-btn">
+    Start Learning
+    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+  </a>
+</section>
+
+<!-- ═══ STICKY NAV ═══ -->
+<nav id="main">
+  <div class="nav-inner">
+    <button class="nav-btn active" data-cat="all">All</button>
+    <button class="nav-btn" data-cat="pronouns">Pronouns</button>
+    <button class="nav-btn" data-cat="helpers">Helpers</button>
+    <button class="nav-btn" data-cat="questions">Questions</button>
+    <button class="nav-btn" data-cat="joiners">Joiners</button>
+    <button class="nav-btn" data-cat="place">Place/Time</button>
+    <button class="nav-btn" data-cat="time">Time Words</button>
+    <button class="nav-btn" data-cat="fillers">Fillers</button>
+    <button class="nav-btn" data-cat="verbs">Verbs</button>
+    <button class="nav-btn" data-cat="articles">Articles</button>
+    <button class="nav-btn" data-cat="adjectives">Adjectives</button>
+    <button class="nav-btn" data-cat="adverbs">Adverbs</button>
+  </div>
+</nav>
+
+<!-- ═══ SEARCH ═══ -->
+<div class="search-wrap">
+  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+  </svg>
+  <input id="search" type="text" placeholder="Search words or Hindi meaning...">
+</div>
+
+<!-- ═══ PROGRESS ═══ -->
+<div class="learned-bar">
+  <span class="learned-label"><span id="learned-count">0</span> / <span id="total-count">0</span> learned</span>
+  <div class="learned-track"><div class="learned-fill" id="lfill"></div></div>
+  <span class="learned-label" id="pct-label">0%</span>
+</div>
+
+<!-- ═══ GRID ═══ -->
+<main>
+<div class="grid" id="grid">
+
+  <!-- PRONOUNS -->
+  <div class="card" data-cat="pronouns" style="--cat-color:#60a5fa;--glow-color:rgba(96,165,250,.08)">
+    <div class="card-top"><span class="cat-pill">Pronouns</span><span class="cat-count"></span></div>
+    <h2>Sarvnaam</h2>
+    <p class="card-hint">Logon aur chezon ke baare mein bolne ke liye</p>
+    <div class="words">
+      <span class="word" data-m="मैं">I<span class="tip">मैं</span></span>
+      <span class="word" data-m="तुम / आप">You<span class="tip">तुम / आप</span></span>
+      <span class="word" data-m="वो (लड़का)">He<span class="tip">वो (लड़का)</span></span>
+      <span class="word" data-m="वो (लड़की)">She<span class="tip">वो (लड़की)</span></span>
+      <span class="word" data-m="वो (चीज़)">It<span class="tip">वो (चीज़)</span></span>
+      <span class="word" data-m="हम">We<span class="tip">हम</span></span>
+      <span class="word" data-m="वे लोग">They<span class="tip">वे लोग</span></span>
+      <span class="word" data-m="कौन">Who<span class="tip">कौन</span></span>
+      <span class="word" data-m="जिसे / किसे">Whom<span class="tip">जिसे / किसे</span></span>
+      <span class="word" data-m="जिसका / किसका">Whose<span class="tip">जिसका / किसका</span></span>
+      <span class="word" data-m="खुद (मैं)">Myself<span class="tip">खुद (मैं)</span></span>
+      <span class="word" data-m="खुद (वो-लड़का)">Himself<span class="tip">खुद (वो-लड़का)</span></span>
+      <span class="word" data-m="खुद (वो-लड़की)">Herself<span class="tip">खुद (वो-लड़की)</span></span>
+      <span class="word" data-m="खुद (हम)">Ourselves<span class="tip">खुद (हम)</span></span>
+      <span class="word" data-m="एक-दूसरे">Each other<span class="tip">एक-दूसरे</span></span>
+    </div>
+  </div>
+
+  <!-- HELPER VERBS -->
+  <div class="card" data-cat="helpers" style="--cat-color:#f59e0b;--glow-color:rgba(245,158,11,.08)">
+    <div class="card-top"><span class="cat-pill">Helper Verbs</span><span class="cat-count"></span></div>
+    <h2>Auxiliary Verbs</h2>
+    <p class="card-hint">Sentence ki neenv — inka sahi use sabse zaroori hai</p>
+    <div class="words">
+      <span class="word" data-m="हूँ (main)">Am<span class="tip">हूँ (main)</span></span>
+      <span class="word" data-m="है (woh)">Is<span class="tip">है (woh)</span></span>
+      <span class="word" data-m="हैं (hum/aap)">Are<span class="tip">हैं (hum/aap)</span></span>
+      <span class="word" data-m="था / थी">Was<span class="tip">था / थी</span></span>
+      <span class="word" data-m="थे / थीं">Were<span class="tip">थे / थीं</span></span>
+      <span class="word" data-m="होगा / होगी">Will<span class="tip">होगा / होगी</span></span>
+      <span class="word" data-m="होता / होती">Would<span class="tip">होता / होती</span></span>
+      <span class="word" data-m="पास होना / हुआ है">Have<span class="tip">पास होना / हुआ है</span></span>
+      <span class="word" data-m="पास है (woh)">Has<span class="tip">पास है (woh)</span></span>
+      <span class="word" data-m="था पास / हुआ था">Had<span class="tip">था पास / हुआ था</span></span>
+      <span class="word" data-m="करना (sahayak)">Do<span class="tip">करना (sahayak)</span></span>
+      <span class="word" data-m="करता है">Does<span class="tip">करता है</span></span>
+      <span class="word" data-m="किया था">Did<span class="tip">किया था</span></span>
+      <span class="word" data-m="सकता हूँ / हो सकता है">Can<span class="tip">सकता हूँ / हो सकता है</span></span>
+      <span class="word" data-m="सका / पाया">Could<span class="tip">सका / पाया</span></span>
+      <span class="word" data-m="चाहिए">Should<span class="tip">चाहिए</span></span>
+      <span class="word" data-m="हो सकता है">May<span class="tip">हो सकता है</span></span>
+      <span class="word" data-m="हो सकता था (shaayad)">Might<span class="tip">हो सकता था (shaayad)</span></span>
+      <span class="word" data-m="करना होगा / ज़रूरी है">Must<span class="tip">करना होगा / ज़रूरी है</span></span>
+    </div>
+  </div>
+
+  <!-- QUESTION WORDS -->
+  <div class="card" data-cat="questions" style="--cat-color:#06b6d4;--glow-color:rgba(6,182,212,.08)">
+    <div class="card-top"><span class="cat-pill">Questions</span><span class="cat-count"></span></div>
+    <h2>Wh– Words</h2>
+    <p class="card-hint">Sawal poochne ke liye — English conversation ki jaan</p>
+    <div class="words">
+      <span class="word" data-m="क्या">What<span class="tip">क्या</span></span>
+      <span class="word" data-m="कौन">Who<span class="tip">कौन</span></span>
+      <span class="word" data-m="कहाँ">Where<span class="tip">कहाँ</span></span>
+      <span class="word" data-m="कब">When<span class="tip">कब</span></span>
+      <span class="word" data-m="क्यों">Why<span class="tip">क्यों</span></span>
+      <span class="word" data-m="कैसे">How<span class="tip">कैसे</span></span>
+      <span class="word" data-m="कौनसा">Which<span class="tip">कौनसा</span></span>
+      <span class="word" data-m="किसका">Whose<span class="tip">किसका</span></span>
+      <span class="word" data-m="कितना (uncountable)">How much<span class="tip">कितना (uncountable)</span></span>
+      <span class="word" data-m="कितने (countable)">How many<span class="tip">कितने (countable)</span></span>
+      <span class="word" data-m="कितनी दूर">How far<span class="tip">कितनी दूर</span></span>
+      <span class="word" data-m="कितनी देर / लंबा">How long<span class="tip">कितनी देर / लंबा</span></span>
+      <span class="word" data-m="कितनी बार">How often<span class="tip">कितनी बार</span></span>
+      <span class="word" data-m="कितनी उम्र">How old<span class="tip">कितनी उम्र</span></span>
+    </div>
+  </div>
+
+  <!-- JOINERS -->
+  <div class="card" data-cat="joiners" style="--cat-color:#ec4899;--glow-color:rgba(236,72,153,.08)">
+    <div class="card-top"><span class="cat-pill">Conjunctions</span><span class="cat-count"></span></div>
+    <h2>Joining Words</h2>
+    <p class="card-hint">Do sentences ko jodte hain — fluent bolne ke liye must</p>
+    <div class="words">
+      <span class="word" data-m="और">And<span class="tip">और</span></span>
+      <span class="word" data-m="लेकिन / मगर">But<span class="tip">लेकिन / मगर</span></span>
+      <span class="word" data-m="या">Or<span class="tip">या</span></span>
+      <span class="word" data-m="क्योंकि">Because<span class="tip">क्योंकि</span></span>
+      <span class="word" data-m="जब">When<span class="tip">जब</span></span>
+      <span class="word" data-m="अगर / यदि">If<span class="tip">अगर / यदि</span></span>
+      <span class="word" data-m="हालाँकि">Although<span class="tip">हालाँकि</span></span>
+      <span class="word" data-m="इसलिए">So<span class="tip">इसलिए</span></span>
+      <span class="word" data-m="ताकि">So that<span class="tip">ताकि</span></span>
+      <span class="word" data-m="जबकि">While<span class="tip">जबकि</span></span>
+      <span class="word" data-m="जब तक">Until<span class="tip">जब तक</span></span>
+      <span class="word" data-m="जब से / क्योंकि">Since<span class="tip">जब से / क्योंकि</span></span>
+      <span class="word" data-m="जब तक नहीं">Unless<span class="tip">जब तक नहीं</span></span>
+      <span class="word" data-m="फिर भी">Yet<span class="tip">फिर भी</span></span>
+      <span class="word" data-m="न तो... न">Neither…nor<span class="tip">न तो... न</span></span>
+      <span class="word" data-m="या तो... या">Either…or<span class="tip">या तो... या</span></span>
+      <span class="word" data-m="जैसे ही">As soon as<span class="tip">जैसे ही</span></span>
+    </div>
+  </div>
+
+  <!-- PREPOSITIONS -->
+  <div class="card" data-cat="place" style="--cat-color:#10b981;--glow-color:rgba(16,185,129,.08)">
+    <div class="card-top"><span class="cat-pill">Prepositions</span><span class="cat-count"></span></div>
+    <h2>Place & Relation</h2>
+    <p class="card-hint">Jagah, direction aur rishta batane ke liye</p>
+    <div class="words">
+      <span class="word" data-m="में">In<span class="tip">में</span></span>
+      <span class="word" data-m="पर (touching)">On<span class="tip">पर (touching)</span></span>
+      <span class="word" data-m="पर (exact point)">At<span class="tip">पर (exact point)</span></span>
+      <span class="word" data-m="को / की तरफ">To<span class="tip">को / की तरफ</span></span>
+      <span class="word" data-m="से">From<span class="tip">से</span></span>
+      <span class="word" data-m="के साथ">With<span class="tip">के साथ</span></span>
+      <span class="word" data-m="के लिए">For<span class="tip">के लिए</span></span>
+      <span class="word" data-m="के बारे में">About<span class="tip">के बारे में</span></span>
+      <span class="word" data-m="के ऊपर">Above<span class="tip">के ऊपर</span></span>
+      <span class="word" data-m="के नीचे">Below<span class="tip">के नीचे</span></span>
+      <span class="word" data-m="के अंदर">Inside<span class="tip">के अंदर</span></span>
+      <span class="word" data-m="के बाहर">Outside<span class="tip">के बाहर</span></span>
+      <span class="word" data-m="के पास">Near<span class="tip">के पास</span></span>
+      <span class="word" data-m="के बीच (2 cheezon mein)">Between<span class="tip">के बीच (2)</span></span>
+      <span class="word" data-m="के बीच (3+ mein)">Among<span class="tip">के बीच (3+)</span></span>
+      <span class="word" data-m="के पार">Across<span class="tip">के पार</span></span>
+      <span class="word" data-m="के खिलाफ">Against<span class="tip">के खिलाफ</span></span>
+      <span class="word" data-m="के बिना">Without<span class="tip">के बिना</span></span>
+      <span class="word" data-m="के दौरान">During<span class="tip">के दौरान</span></span>
+      <span class="word" data-m="के ज़रिए">Through<span class="tip">के ज़रिए</span></span>
+    </div>
+  </div>
+
+  <!-- TIME WORDS -->
+  <div class="card" data-cat="time" style="--cat-color:#8b5cf6;--glow-color:rgba(139,92,246,.08)">
+    <div class="card-top"><span class="cat-pill">Time Words</span><span class="cat-count"></span></div>
+    <h2>Time & Frequency</h2>
+    <p class="card-hint">Kab aur kitni baar — sentences complete karte hain</p>
+    <div class="words">
+      <span class="word" data-m="अभी">Now<span class="tip">अभी</span></span>
+      <span class="word" data-m="फिर / तब">Then<span class="tip">फिर / तब</span></span>
+      <span class="word" data-m="आज">Today<span class="tip">आज</span></span>
+      <span class="word" data-m="कल (बीता)">Yesterday<span class="tip">कल (बीता)</span></span>
+      <span class="word" data-m="कल (आने वाला)">Tomorrow<span class="tip">कल (आने वाला)</span></span>
+      <span class="word" data-m="हमेशा">Always<span class="tip">हमेशा</span></span>
+      <span class="word" data-m="कभी-कभी">Sometimes<span class="tip">कभी-कभी</span></span>
+      <span class="word" data-m="अक्सर">Often<span class="tip">अक्सर</span></span>
+      <span class="word" data-m="आमतौर पर">Usually<span class="tip">आमतौर पर</span></span>
+      <span class="word" data-m="कभी नहीं">Never<span class="tip">कभी नहीं</span></span>
+      <span class="word" data-m="अभी भी">Still<span class="tip">अभी भी</span></span>
+      <span class="word" data-m="पहले से / already">Already<span class="tip">पहले से</span></span>
+      <span class="word" data-m="अभी तक नहीं">Yet<span class="tip">अभी तक नहीं</span></span>
+      <span class="word" data-m="जल्दी">Soon<span class="tip">जल्दी</span></span>
+      <span class="word" data-m="अंत में">Finally<span class="tip">अंत में</span></span>
+      <span class="word" data-m="बाद में">Later<span class="tip">बाद में</span></span>
+      <span class="word" data-m="तुरंत">Immediately<span class="tip">तुरंत</span></span>
+      <span class="word" data-m="शायद ही कभी">Rarely<span class="tip">शायद ही कभी</span></span>
+    </div>
+  </div>
+
+  <!-- FILLERS -->
+  <div class="card" data-cat="fillers" style="--cat-color:#f97316;--glow-color:rgba(249,115,22,.08)">
+    <div class="card-top"><span class="cat-pill">Expressions</span><span class="cat-count"></span></div>
+    <h2>Fillers & Connectors</h2>
+    <p class="card-hint">Fluent lagoge jab ye naturally aayenge</p>
+    <div class="words">
+      <span class="word" data-m="वैसे भी">Anyway<span class="tip">वैसे भी</span></span>
+      <span class="word" data-m="वास्तव में">Actually<span class="tip">वास्तव में</span></span>
+      <span class="word" data-m="मूल रूप से">Basically<span class="tip">मूल रूप से</span></span>
+      <span class="word" data-m="ज़ाहिर है">Obviously<span class="tip">ज़ाहिर है</span></span>
+      <span class="word" data-m="स्पष्ट रूप से">Clearly<span class="tip">स्पष्ट रूप से</span></span>
+      <span class="word" data-m="इसके अलावा">Besides<span class="tip">इसके अलावा</span></span>
+      <span class="word" data-m="साथ ही">Also<span class="tip">साथ ही</span></span>
+      <span class="word" data-m="इसके अलावा (formal)">Moreover<span class="tip">इसके अलावा</span></span>
+      <span class="word" data-m="फिर भी (contrast)">However<span class="tip">फिर भी</span></span>
+      <span class="word" data-m="दूसरी तरफ">On the other hand<span class="tip">दूसरी तरफ</span></span>
+      <span class="word" data-m="उदाहरण के लिए">For example<span class="tip">उदाहरण के लिए</span></span>
+      <span class="word" data-m="यानी / मतलब">That is<span class="tip">यानी / मतलब</span></span>
+      <span class="word" data-m="संक्षेप में">In short<span class="tip">संक्षेप में</span></span>
+      <span class="word" data-m="मेरे हिसाब से">In my opinion<span class="tip">मेरे हिसाब से</span></span>
+      <span class="word" data-m="बिल्कुल">Absolutely<span class="tip">बिल्कुल</span></span>
+      <span class="word" data-m="शायद">Perhaps<span class="tip">शायद</span></span>
+      <span class="word" data-m="सच में">Indeed<span class="tip">सच में</span></span>
+      <span class="word" data-m="ध्यान दें">Note that<span class="tip">ध्यान दें</span></span>
+    </div>
+  </div>
+
+  <!-- CORE VERBS — wide -->
+  <div class="card wide" data-cat="verbs" style="--cat-color:#a78bfa;--glow-color:rgba(167,139,250,.06)">
+    <div class="card-top"><span class="cat-pill">Core Verbs</span><span class="cat-count"></span></div>
+    <h2>Sabse Zyada Use Hone Wale Verbs</h2>
+    <p class="card-hint">Ye 36 verbs seekh lo — 80% conversations cover ho jayenge</p>
+    <div class="words">
+      <span class="word" data-m="होना">Be<span class="tip">होना</span></span>
+      <span class="word" data-m="लेना">Take<span class="tip">लेना</span></span>
+      <span class="word" data-m="देना">Give<span class="tip">देना</span></span>
+      <span class="word" data-m="आना">Come<span class="tip">आना</span></span>
+      <span class="word" data-m="जाना">Go<span class="tip">जाना</span></span>
+      <span class="word" data-m="जानना">Know<span class="tip">जानना</span></span>
+      <span class="word" data-m="सोचना">Think<span class="tip">सोचना</span></span>
+      <span class="word" data-m="देखना">See<span class="tip">देखना</span></span>
+      <span class="word" data-m="बनाना">Make<span class="tip">बनाना</span></span>
+      <span class="word" data-m="बोलना / कहना">Say<span class="tip">बोलना / कहना</span></span>
+      <span class="word" data-m="बताना">Tell<span class="tip">बताना</span></span>
+      <span class="word" data-m="पूछना">Ask<span class="tip">पूछना</span></span>
+      <span class="word" data-m="पाना / मिलना">Get<span class="tip">पाना / मिलना</span></span>
+      <span class="word" data-m="रखना">Put<span class="tip">रखना</span></span>
+      <span class="word" data-m="काम करना">Work<span class="tip">काम करना</span></span>
+      <span class="word" data-m="ढूँढना">Find<span class="tip">ढूँढना</span></span>
+      <span class="word" data-m="महसूस करना / लगना">Feel<span class="tip">महसूस करना</span></span>
+      <span class="word" data-m="कोशिश करना">Try<span class="tip">कोशिश करना</span></span>
+      <span class="word" data-m="शुरू करना">Start<span class="tip">शुरू करना</span></span>
+      <span class="word" data-m="रुकना / बंद करना">Stop<span class="tip">रुकना</span></span>
+      <span class="word" data-m="चाहना">Want<span class="tip">चाहना</span></span>
+      <span class="word" data-m="ज़रूरत होना">Need<span class="tip">ज़रूरत होना</span></span>
+      <span class="word" data-m="पसंद करना">Like<span class="tip">पसंद करना</span></span>
+      <span class="word" data-m="प्यार करना">Love<span class="tip">प्यार करना</span></span>
+      <span class="word" data-m="मदद करना">Help<span class="tip">मदद करना</span></span>
+      <span class="word" data-m="याद रखना">Remember<span class="tip">याद रखना</span></span>
+      <span class="word" data-m="समझना">Understand<span class="tip">समझना</span></span>
+      <span class="word" data-m="सुनना">Listen<span class="tip">सुनना</span></span>
+      <span class="word" data-m="देखना (ध्यान से)">Look<span class="tip">देखना</span></span>
+      <span class="word" data-m="इस्तेमाल करना">Use<span class="tip">इस्तेमाल करना</span></span>
+      <span class="word" data-m="बदलना">Change<span class="tip">बदलना</span></span>
+      <span class="word" data-m="रहना">Stay<span class="tip">रहना</span></span>
+      <span class="word" data-m="छोड़ना">Leave<span class="tip">छोड़ना</span></span>
+      <span class="word" data-m="खोलना">Open<span class="tip">खोलना</span></span>
+      <span class="word" data-m="बंद करना">Close<span class="tip">बंद करना</span></span>
+      <span class="word" data-m="चलाना / run करना">Run<span class="tip">चलाना / दौड़ना</span></span>
+    </div>
+  </div>
+
+  <!-- ARTICLES & DETERMINERS -->
+  <div class="card" data-cat="articles" style="--cat-color:#34d399;--glow-color:rgba(52,211,153,.08)">
+    <div class="card-top"><span class="cat-pill">Articles</span><span class="cat-count"></span></div>
+    <h2>Articles & Determiners</h2>
+    <p class="card-hint">Chhote words, badi galti — inka use clearly samjho</p>
+    <div class="words">
+      <span class="word" data-m="एक (consonant se pehle)">A<span class="tip">एक (consonant)</span></span>
+      <span class="word" data-m="एक (vowel se pehle)">An<span class="tip">एक (vowel)</span></span>
+      <span class="word" data-m="वो / वह (specific)">The<span class="tip">वो (specific)</span></span>
+      <span class="word" data-m="यह">This<span class="tip">यह</span></span>
+      <span class="word" data-m="वह">That<span class="tip">वह</span></span>
+      <span class="word" data-m="ये (plural)">These<span class="tip">ये (plural)</span></span>
+      <span class="word" data-m="वे (plural)">Those<span class="tip">वे (plural)</span></span>
+      <span class="word" data-m="हर एक">Each<span class="tip">हर एक</span></span>
+      <span class="word" data-m="हर">Every<span class="tip">हर</span></span>
+      <span class="word" data-m="कुछ (countable)">Some<span class="tip">कुछ</span></span>
+      <span class="word" data-m="कोई भी">Any<span class="tip">कोई भी</span></span>
+      <span class="word" data-m="कोई नहीं / बिल्कुल नहीं">No<span class="tip">कोई नहीं</span></span>
+      <span class="word" data-m="दोनों">Both<span class="tip">दोनों</span></span>
+      <span class="word" data-m="या तो एक">Either<span class="tip">या तो एक</span></span>
+      <span class="word" data-m="न एक न दूसरा">Neither<span class="tip">न एक न दूसरा</span></span>
+      <span class="word" data-m="बहुत सारे (uncountable)">Much<span class="tip">बहुत सारे</span></span>
+      <span class="word" data-m="बहुत सारे (countable)">Many<span class="tip">बहुत सारे</span></span>
+      <span class="word" data-m="थोड़ा (uncountable)">Little<span class="tip">थोड़ा</span></span>
+      <span class="word" data-m="थोड़े (countable)">Few<span class="tip">थोड़े</span></span>
+      <span class="word" data-m="पूरा / सभी">All<span class="tip">पूरा / सभी</span></span>
+      <span class="word" data-m="अधिकतर">Most<span class="tip">अधिकतर</span></span>
+      <span class="word" data-m="कोई (person)">Someone<span class="tip">कोई</span></span>
+      <span class="word" data-m="कोई नहीं (person)">No one<span class="tip">कोई नहीं</span></span>
+      <span class="word" data-m="कोई भी (person)">Anyone<span class="tip">कोई भी</span></span>
+      <span class="word" data-m="सब कोई">Everyone<span class="tip">सब कोई</span></span>
+    </div>
+  </div>
+
+  <!-- ADJECTIVES -->
+  <div class="card" data-cat="adjectives" style="--cat-color:#fb7185;--glow-color:rgba(251,113,133,.08)">
+    <div class="card-top"><span class="cat-pill">Adjectives</span><span class="cat-count"></span></div>
+    <h2>Common Adjectives</h2>
+    <p class="card-hint">Kisi cheez ya insaan ko describe karne ke liye</p>
+    <div class="words">
+      <span class="word" data-m="अच्छा">Good<span class="tip">अच्छा</span></span>
+      <span class="word" data-m="बुरा">Bad<span class="tip">बुरा</span></span>
+      <span class="word" data-m="बड़ा">Big<span class="tip">बड़ा</span></span>
+      <span class="word" data-m="छोटा">Small<span class="tip">छोटा</span></span>
+      <span class="word" data-m="नया">New<span class="tip">नया</span></span>
+      <span class="word" data-m="पुराना">Old<span class="tip">पुराना</span></span>
+      <span class="word" data-m="तेज़ / जल्दी">Fast<span class="tip">तेज़</span></span>
+      <span class="word" data-m="धीमा">Slow<span class="tip">धीमा</span></span>
+      <span class="word" data-m="आसान">Easy<span class="tip">आसान</span></span>
+      <span class="word" data-m="मुश्किल">Hard<span class="tip">मुश्किल</span></span>
+      <span class="word" data-m="लंबा (height)">Tall<span class="tip">लंबा (height)</span></span>
+      <span class="word" data-m="छोटा (height)">Short<span class="tip">छोटा (height)</span></span>
+      <span class="word" data-m="लंबा (length)">Long<span class="tip">लंबा (length)</span></span>
+      <span class="word" data-m="गरम">Hot<span class="tip">गरम</span></span>
+      <span class="word" data-m="ठंडा">Cold<span class="tip">ठंडा</span></span>
+      <span class="word" data-m="खुश">Happy<span class="tip">खुश</span></span>
+      <span class="word" data-m="उदास">Sad<span class="tip">उदास</span></span>
+      <span class="word" data-m="थका हुआ">Tired<span class="tip">थका हुआ</span></span>
+      <span class="word" data-m="तैयार">Ready<span class="tip">तैयार</span></span>
+      <span class="word" data-m="ज़रूरी">Important<span class="tip">ज़रूरी</span></span>
+      <span class="word" data-m="दिलचस्प">Interesting<span class="tip">दिलचस्प</span></span>
+      <span class="word" data-m="उबाऊ">Boring<span class="tip">उबाऊ</span></span>
+      <span class="word" data-m="सही">Correct<span class="tip">सही</span></span>
+      <span class="word" data-m="गलत">Wrong<span class="tip">गलत</span></span>
+      <span class="word" data-m="मुफ़्त / आज़ाद">Free<span class="tip">मुफ़्त / आज़ाद</span></span>
+      <span class="word" data-m="व्यस्त">Busy<span class="tip">व्यस्त</span></span>
+      <span class="word" data-m="ताज़ा">Fresh<span class="tip">ताज़ा</span></span>
+      <span class="word" data-m="मज़बूत">Strong<span class="tip">मज़बूत</span></span>
+      <span class="word" data-m="कमज़ोर">Weak<span class="tip">कमज़ोर</span></span>
+      <span class="word" data-m="सुरक्षित">Safe<span class="tip">सुरक्षित</span></span>
+    </div>
+  </div>
+
+  <!-- ADVERBS -->
+  <div class="card" data-cat="adverbs" style="--cat-color:#38bdf8;--glow-color:rgba(56,189,248,.08)">
+    <div class="card-top"><span class="cat-pill">Adverbs</span><span class="cat-count"></span></div>
+    <h2>Common Adverbs</h2>
+    <p class="card-hint">Verb ya sentence ko aur strong banane ke liye</p>
+    <div class="words">
+      <span class="word" data-m="भी">Also<span class="tip">भी</span></span>
+      <span class="word" data-m="बहुत">Very<span class="tip">बहुत</span></span>
+      <span class="word" data-m="बहुत ज़्यादा">Too<span class="tip">बहुत ज़्यादा</span></span>
+      <span class="word" data-m="काफ़ी">Quite<span class="tip">काफ़ी</span></span>
+      <span class="word" data-m="बिल्कुल">Completely<span class="tip">बिल्कुल</span></span>
+      <span class="word" data-m="लगभग">Almost<span class="tip">लगभग</span></span>
+      <span class="word" data-m="सिर्फ़">Just<span class="tip">सिर्फ़</span></span>
+      <span class="word" data-m="केवल">Only<span class="tip">केवल</span></span>
+      <span class="word" data-m="यहाँ">Here<span class="tip">यहाँ</span></span>
+      <span class="word" data-m="वहाँ">There<span class="tip">वहाँ</span></span>
+      <span class="word" data-m="कहीं">Somewhere<span class="tip">कहीं</span></span>
+      <span class="word" data-m="कहीं नहीं">Nowhere<span class="tip">कहीं नहीं</span></span>
+      <span class="word" data-m="हर जगह">Everywhere<span class="tip">हर जगह</span></span>
+      <span class="word" data-m="तेज़ी से">Quickly<span class="tip">तेज़ी से</span></span>
+      <span class="word" data-m="धीरे-धीरे">Slowly<span class="tip">धीरे-धीरे</span></span>
+      <span class="word" data-m="ध्यान से">Carefully<span class="tip">ध्यान से</span></span>
+      <span class="word" data-m="आसानी से">Easily<span class="tip">आसानी से</span></span>
+      <span class="word" data-m="सच में / वाकई">Really<span class="tip">सच में / वाकई</span></span>
+      <span class="word" data-m="शायद">Maybe<span class="tip">शायद</span></span>
+      <span class="word" data-m="ज़ोर से">Loudly<span class="tip">ज़ोर से</span></span>
+      <span class="word" data-m="धीरे से">Quietly<span class="tip">धीरे से</span></span>
+      <span class="word" data-m="खुशी से">Happily<span class="tip">खुशी से</span></span>
+      <span class="word" data-m="दुर्भाग्य से">Unfortunately<span class="tip">दुर्भाग्य से</span></span>
+      <span class="word" data-m="खुशकिस्मती से">Fortunately<span class="tip">खुशकिस्मती से</span></span>
+      <span class="word" data-m="बिल्कुल / निश्चित रूप से">Definitely<span class="tip">बिल्कुल / निश्चित</span></span>
+    </div>
+  </div>
+
+  <div id="no-results">
+    <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <p>Koi word nahi mila — dusra word try karo</p>
+  </div>
+
+</div>
+</main>
+
+<!-- ═══ FOOTER ═══ -->
+<footer>
+  Built with ❤️ by <span>Alok Chittoria</span> &nbsp;|&nbsp; <span>WordVault</span> – Interactive English Learning Tool
+</footer>
+
+<!-- ═══ SCRIPTS ═══ -->
+<script>
+// ── Cursor ──────────────────────────────────────
+const cur = document.getElementById('cursor');
+const ring = document.getElementById('cursor-ring');
+let mx=0, my=0, rx=0, ry=0;
+document.addEventListener('mousemove', e => { mx=e.clientX; my=e.clientY; cur.style.left=mx+'px'; cur.style.top=my+'px'; });
+(function animate(){ rx+=(mx-rx)*.12; ry+=(my-ry)*.12; ring.style.left=rx+'px'; ring.style.top=ry+'px'; requestAnimationFrame(animate); })();
+
+// ── Scroll Progress ──────────────────────────────
+const pgbar = document.getElementById('pgbar');
+window.addEventListener('scroll', () => {
+  const h = document.documentElement.scrollHeight - window.innerHeight;
+  pgbar.style.width = (window.scrollY/h*100)+'%';
+});
+
+// ── Canvas BG ────────────────────────────────────
+const canvas = document.getElementById('bg-canvas');
+const ctx = canvas.getContext('2d');
+let W, H, dots=[];
+function resize(){ W=canvas.width=window.innerWidth; H=canvas.height=window.innerHeight; }
+resize(); window.addEventListener('resize', resize);
+const colors = ['#3b82f6','#06b6d4','#f59e0b','#ec4899','#10b981','#8b5cf6'];
+for(let i=0;i<55;i++) dots.push({ x:Math.random()*W, y:Math.random()*H, r:Math.random()*1.8+0.4, vx:(Math.random()-.5)*.25, vy:(Math.random()-.5)*.25, c:colors[Math.floor(Math.random()*colors.length)] });
+function drawBg(){
+  ctx.clearRect(0,0,W,H);
+  dots.forEach(d=>{
+    d.x+=d.vx; d.y+=d.vy;
+    if(d.x<0||d.x>W) d.vx*=-1;
+    if(d.y<0||d.y>H) d.vy*=-1;
+    ctx.beginPath(); ctx.arc(d.x,d.y,d.r,0,Math.PI*2);
+    ctx.fillStyle=d.c; ctx.fill();
+  });
+  // draw faint lines
+  for(let i=0;i<dots.length;i++) for(let j=i+1;j<dots.length;j++){
+    const dx=dots[i].x-dots[j].x, dy=dots[i].y-dots[j].y, dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist<120){ ctx.beginPath(); ctx.moveTo(dots[i].x,dots[i].y); ctx.lineTo(dots[j].x,dots[j].y); ctx.strokeStyle='rgba(255,255,255,'+(0.04*(1-dist/120))+')'; ctx.lineWidth=.5; ctx.stroke(); }
+  }
+  requestAnimationFrame(drawBg);
+}
+drawBg();
+
+// ── Word count per card ──────────────────────────
+document.querySelectorAll('.card').forEach(card=>{
+  const n = card.querySelectorAll('.word').length;
+  card.querySelector('.cat-count').textContent = n+' words';
+});
+
+// ── Total words ──────────────────────────────────
+const allWords = document.querySelectorAll('.word');
+document.getElementById('total-count').textContent = allWords.length;
+
+// ── Learned system ──────────────────────────────
+let learnedSet = new Set(JSON.parse(localStorage.getItem('wv_learned')||'[]'));
+function updateProgress(){
+  const n = learnedSet.size, t = allWords.length;
+  document.getElementById('learned-count').textContent = n;
+  document.getElementById('hero-learned').textContent = n;
+  const p = t>0 ? Math.round(n/t*100) : 0;
+  document.getElementById('lfill').style.width = p+'%';
+  document.getElementById('pct-label').textContent = p+'%';
+}
+allWords.forEach(w=>{
+  const key = w.textContent.trim().replace('✓','');
+  if(learnedSet.has(key)) w.classList.add('learned');
+  w.addEventListener('click', ()=>{
+    if(learnedSet.has(key)){ learnedSet.delete(key); w.classList.remove('learned'); }
+    else { learnedSet.add(key); w.classList.add('learned'); }
+    localStorage.setItem('wv_learned', JSON.stringify([...learnedSet]));
+    updateProgress();
+    // tiny bounce
+    w.animate([{transform:'scale(1)'},{transform:'scale(1.2)'},{transform:'scale(1)'}],{duration:220,easing:'ease-out'});
+  });
+});
+updateProgress();
+
+// ── Category filter ──────────────────────────────
+const navBtns = document.querySelectorAll('.nav-btn');
+const cards   = document.querySelectorAll('.card[data-cat]');
+navBtns.forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    navBtns.forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const cat = btn.dataset.cat;
+    cards.forEach(c=>{
+      c.style.display = (cat==='all'||c.dataset.cat===cat) ? '' : 'none';
+    });
+    filterWords();
+  });
+});
+
+// ── Search ──────────────────────────────────────
+const searchInput = document.getElementById('search');
+const noRes = document.getElementById('no-results');
+function filterWords(){
+  const q = searchInput.value.toLowerCase().trim();
+  let anyVisible = false;
+  const activeCat = document.querySelector('.nav-btn.active').dataset.cat;
+  cards.forEach(card=>{
+    if(activeCat!=='all' && card.dataset.cat!==activeCat){ card.style.display='none'; return; }
+    const words = card.querySelectorAll('.word');
+    let cardHit = false;
+    words.forEach(w=>{
+      const eng = w.childNodes[0].textContent.toLowerCase();
+      const hin = (w.dataset.m||'').toLowerCase();
+      const hit = !q || eng.includes(q) || hin.includes(q);
+      w.style.display = hit ? '' : 'none';
+      if(hit) cardHit = true;
+    });
+    card.style.display = cardHit ? '' : 'none';
+    if(cardHit) anyVisible=true;
+  });
+  noRes.style.display = anyVisible ? 'none' : 'block';
+}
+searchInput.addEventListener('input', filterWords);
+
+// ── Intersection Observer for card entry animations ──
+const observer = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{ if(e.isIntersecting){ e.target.style.animationPlayState='running'; observer.unobserve(e.target); } });
+},{threshold:.1});
+document.querySelectorAll('.card').forEach((c,i)=>{ c.style.animationDelay=(i*.05)+'s'; c.style.animationPlayState='paused'; observer.observe(c); });
+</script>
+</body>
+</html>
