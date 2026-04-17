@@ -1,6 +1,3 @@
-# wordvault
-Interactive English learning tool with search, filter &amp; progress tracking
-
 # 🚀 WordVault – Interactive English Learning Tool
 
 WordVault is a modern, interactive web-based English learning tool designed to help users improve their vocabulary with ease. It provides categorized words, Hindi meanings, and real-time progress tracking.
